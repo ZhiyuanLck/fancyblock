@@ -6,4 +6,4 @@ With `expl3` and `tikz`.
  - `\randomblock` receives an 1-dim array to draw random blocks, with the length of every row be the corresponding element of the array.
  - `\randomrectangle` receives two number, which are the width and height of the rectangle that is composed by multiple random blocks.
 
-![example](master/pics/example.png)
+![example](blob/master/pics/example.png)
