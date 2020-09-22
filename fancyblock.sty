@@ -1,0 +1,253 @@
+\RequirePackage{expl3}
+\ProvidesExplPackage
+  { fancyblock }
+  { 2020-09-22 }
+  { 1.0 }
+  { Construct your fancy blocks!}
+\RequirePackage{tikz}
+\RequirePackage{xparse}
+
+\tl_new:N   \l__at_tl
+\tl_new:N   \l__name_tl
+\tl_new:N   \l__anchor_tl
+\tl_new:N   \l__block_style_tl
+\dim_new:N  \l__block_wd_dim
+\dim_new:N  \l__x_coor_dim
+\dim_new:N  \l__y_coor_dim
+\dim_new:N  \l__block_x_unit_dim
+\dim_new:N  \l__block_y_unit_dim
+\int_new:N  \l__remain_int
+\int_new:N  \l__temp_int
+\bool_new:N \l__random_bool
+\bool_new:N \l__transpose_bool
+
+\keys_define:nn { fancyblock }
+  {
+    at          . tl_set:N   = \l__at_tl,
+    name        . tl_set:N   = \l__name_tl,
+    random      . bool_set:N = \l__random_bool,
+    random      . default:n  = true,
+    transpose   . bool_set:N = \l__transpose_bool,
+    transpose   . default:n  = true,
+    x           . dim_set:N  = \l__block_x_unit_dim,
+    y           . dim_set:N  = \l__block_y_unit_dim,
+    unit        . code:n     =
+      {
+        \dim_set:Nn \l__block_x_unit_dim { #1 }
+        \dim_set:Nn \l__block_y_unit_dim { #1 }
+      },
+    block       . code:n     =
+      {
+        \tl_put_right:Nn \l__block_style_tl { ,#1 }
+      },
+    anchor      . choice:,
+    anchor / l  . code:n     = { \tl_set:Nn \l__anchor_tl { west } },
+    anchor / r  . code:n     = { \tl_set:Nn \l__anchor_tl { east } },
+    anchor / t  . code:n     = { \tl_set:Nn \l__anchor_tl { north } },
+    anchor / b  . code:n     = { \tl_set:Nn \l__anchor_tl { south } },
+    anchor / lb . code:n     = { \tl_set:Nn \l__anchor_tl { south~west } },
+    anchor / bl . code:n     = { \tl_set:Nn \l__anchor_tl { south~west } },
+    anchor / lt . code:n     = { \tl_set:Nn \l__anchor_tl { north~west } },
+    anchor / tl . code:n     = { \tl_set:Nn \l__anchor_tl { north~west } },
+    anchor / rb . code:n     = { \tl_set:Nn \l__anchor_tl { south~east } },
+    anchor / br . code:n     = { \tl_set:Nn \l__anchor_tl { south~east } },
+    anchor / rt . code:n     = { \tl_set:Nn \l__anchor_tl { north~east } },
+    anchor / tr . code:n     = { \tl_set:Nn \l__anchor_tl { north~east } },
+  }
+
+\NewDocumentCommand { \randomblock } { O{} m }
+  {
+    \generate_num_matrix:n { #2 }
+    \fancyblock[#1]{\clist_use:Nn \l__matrix_clist {,}}
+  }
+
+\NewDocumentCommand { \randomrectangle } { O{} m m }
+  {
+    \seq_clear:N \l_tmpa_seq
+    \int_step_inline:nn { #2 }
+      {
+        \seq_put_right:Nn \l_tmpa_seq { #3 }
+      }
+    \generate_num_matrix:x
+      {
+        \seq_use:Nn \l_tmpa_seq { , }
+      }
+    \fancyblock[#1]{\clist_use:Nn \l__matrix_clist {,}}
+  }
+
+\cs_new_protected:Nn \generate_num_matrix:n
+  {
+    \clist_clear_new:N \l__matrix_clist
+    \clist_map_inline:nn { #1 }
+      {
+        \generate_num_seq:n { ##1 }
+        \clist_put_right:Nx \l__matrix_clist
+          {
+            { { \clist_use:Nn \l__row_clist {,} } }
+          }
+      }
+  }
+\cs_generate_variant:Nn \generate_num_matrix:n { x }
+
+\cs_new_protected:Nn \generate_num_seq:n
+  {
+    \clist_clear_new:N \l__row_clist
+    \int_set:Nn \l__remain_int { #1 }
+    \int_while_do:nn { \l__remain_int > 0 }
+      {
+        \int_set:Nn \l__temp_int {
+          \int_rand:n { \l__remain_int }
+        }
+        \int_add:Nn \l__remain_int { -\l__temp_int }
+        \clist_put_right:Nx \l__row_clist { \int_use:N \l__temp_int }
+      }
+  }
+
+\NewDocumentCommand { \fancyblock } { O{} m }
+  {
+    \tl_clear:N \l__block_style_tl
+    \keys_set:nn { fancyblock }
+      {
+        at        = { (0, 0) },
+        block     = { draw, thick },
+        unit      = 1cm,
+        transpose = false,
+        anchor    = lb,
+        name      = block,
+        random,
+        #1
+      }
+    \draw_block_matrix:x { #2 }
+  }
+
+\cs_new_protected:Nn \draw_block_matrix:n
+  {
+    \clist_set:Nn \l_tmpa_clist { #1 }
+    \bool_if:NTF \l__transpose_bool
+      {
+        \dim_zero:N \l__x_coor_dim
+      }
+      {
+        \dim_zero:N \l__y_coor_dim
+        \clist_reverse:N \l_tmpa_clist
+      }
+    \matrix [anchor=\l__anchor_tl] (\l__name_tl) at \l__at_tl {
+      \clist_map_inline:Nn \l_tmpa_clist
+        {
+          \draw_row:n { ##1 }
+          \bool_if:NTF \l__transpose_bool
+            {
+              \dim_add:Nn \l__x_coor_dim { \l__block_x_unit_dim }
+            }
+            {
+              \dim_add:Nn \l__y_coor_dim { \l__block_y_unit_dim }
+            }
+        }\\
+    };
+  }
+\cs_generate_variant:Nn \draw_block_matrix:n { x, v, f }
+
+\cs_new_protected:Nn \draw_row:n
+  {
+    \bool_if:NTF \l__transpose_bool
+      {
+        \dim_zero:N \l__y_coor_dim
+      }
+      {
+        \dim_zero:N \l__x_coor_dim
+      }
+    \clist_map_inline:nn { #1 }
+      {
+        \draw_block:n { ##1 }
+      }
+  }
+
+\cs_new_protected:Nn \draw_block:n
+  {
+    \tl_clear_new:N \l__draw_block_tl
+    \parse_args:n { #1 }
+    \definecolor{random}{RGB}{
+      \int_rand:n { 255 },
+      \int_rand:n { 255 },
+      \int_rand:n { 255 }
+    }
+    \tl_set:Nx \l_tmpb_tl
+      {
+        \bool_if:NTF \l__random_bool
+          { fill=random }
+          { }
+      }
+    \tl_set:Nx \l__draw_block_tl
+      {
+        \exp_not:N \path[
+          \l__block_style_tl,
+          \l_tmpb_tl,
+          \seq_use:Nn \l__block_style_seq { , }]
+          (\dim_use:N \l__x_coor_dim, \dim_use:N \l__y_coor_dim) --
+        \bool_if:NTF \l__transpose_bool
+          {
+              ++(0, \dim_use:N \l__block_wd_dim) --
+              ++(\dim_use:N \l__block_x_unit_dim, 0) --
+              ++(0, \dim_eval:n { -\l__block_wd_dim }) -- cycle;
+          }
+          {
+              ++(\dim_use:N \l__block_wd_dim, 0) --
+              ++(0, \dim_use:N \l__block_y_unit_dim) --
+              ++(\dim_eval:n { -\l__block_wd_dim }, 0) -- cycle;
+          }
+      }
+    \tl_use:N \l__draw_block_tl
+    \bool_if:NTF \l__transpose_bool
+      {
+        \dim_add:Nn \l__y_coor_dim { \l__block_wd_dim }
+      }
+      {
+        \dim_add:Nn \l__x_coor_dim { \l__block_wd_dim }
+      }
+  }
+
+\cs_new_protected:Nn \parse_args:n
+  {
+    \seq_clear_new:N \l__block_style_seq
+    \fp_set:Nn \l__block_wd_fp { 1 }
+    \parse_next_arg: #1\stop
+  }
+
+\cs_new_protected:Nn \parse_next_arg:
+  {
+    \peek_meaning_ignore_spaces:NTF [
+      { \parse_style:w }
+      {
+        \peek_meaning_ignore_spaces:NTF |
+          { \parse_fill:w }
+          { \parse_len:w }
+      }
+  }
+
+\cs_new_protected:Npn \parse_style:w [#1]
+  {
+    \seq_put_right:Nn \l__block_style_seq { #1 }
+    \parse_next_arg:
+  }
+
+\cs_new_protected:Npn \parse_fill:w |#1|
+  {
+    \seq_put_right:Nn \l__block_style_seq { fill=#1 }
+    \parse_next_arg:
+  }
+
+\cs_new_protected:Npn \parse_len:w #1\stop
+  {
+    \tikz@checkunit{#1}
+    \legacy_if:nTF { tikz@isdimension }
+      { \dim_set:Nn \l__block_wd_dim { #1 } }
+      {
+        \bool_if:NTF \l__transpose_bool
+          {
+            \dim_set:Nn \l__block_wd_dim { \l__block_y_unit_dim * #1 }
+          }
+          {
+            \dim_set:Nn \l__block_wd_dim { \l__block_x_unit_dim * #1 }
+          }
+      }
+  }

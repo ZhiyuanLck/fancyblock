@@ -1,0 +1,35 @@
+\documentclass[tikz, border=1cm]{standalone}
+\usepackage{fancyblock}
+
+\begin{document}
+\begin{tikzpicture}
+\fancyblock[name=a]{
+  {2, 2, 1},
+  {1, 2, 1},
+  {3, 1, 1}
+}
+\path (a.south) node [below] {\verb|\fancyblock|};
+
+\fancyblock[
+  at={(8, 0)}, name=b, random=false,
+  transpose, y=0.5cm,
+  block={
+    very thick,
+    line width=1pt,
+    draw=teal,
+  }
+]{
+  {2, 1, 1},
+  {1, [fill=red]2, |green|1},
+  {1, 3, {[line width=2pt, draw=black]|teal|1}}
+}
+\path (b.south) node [below] {\verb|\fancyblock| with options};
+
+\randomblock[at={([yshift=1cm]a.north west)}, name=c]{4, 5, 4}
+\path (c.south) node [below] {\verb|\randomblock|};
+
+\randomrectangle[at={(c.south -| b.center)}, name=d, anchor=b]{4}{7}
+\path (d.south) node [below] {\verb|\randomrectangle|};
+
+\end{tikzpicture}
+\end{document}
